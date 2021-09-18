@@ -1,3 +1,5 @@
+#ifndef openssl_hostname_validation_h
+#define openssl_hostname_validation_h
 /*
  * Helper functions to perform basic hostname validation using OpenSSL.
  *
@@ -30,3 +32,5 @@ typedef enum {
 * Returns Error if there was an error.
 */
 HostnameValidationResult validate_hostname(const char *hostname, const X509 *server_cert);
+
+#endif //openssl_hostname_validation_h
