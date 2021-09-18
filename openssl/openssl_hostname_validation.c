@@ -30,9 +30,9 @@
 */
 static HostnameValidationResult matches_common_name(const char *hostname, const X509 *server_cert) {
 	int common_name_loc = -1;
-	X509_NAME_ENTRY *common_name_entry = NULL;
-	ASN1_STRING *common_name_asn1 = NULL;
-	char *common_name_str = NULL;
+	X509_NAME_ENTRY *common_name_entry = nullptr;
+	ASN1_STRING *common_name_asn1 = nullptr;
+	char *common_name_str = nullptr;
 
 	// Find the position of the CN field in the Subject field of the certificate
 	common_name_loc = X509_NAME_get_index_by_NID(X509_get_subject_name((X509 *) server_cert), NID_commonName, -1);
@@ -42,16 +42,22 @@ static HostnameValidationResult matches_common_name(const char *hostname, const 
 
 	// Extract the CN field
 	common_name_entry = X509_NAME_get_entry(X509_get_subject_name((X509 *) server_cert), common_name_loc);
-	if (common_name_entry == NULL) {
+	if (common_name_entry == nullptr) {
 		return Error;
 	}
 
 	// Convert the CN field to a C string
 	common_name_asn1 = X509_NAME_ENTRY_get_data(common_name_entry);
-	if (common_name_asn1 == NULL) {
+	if (common_name_asn1 == nullptr) {
 		return Error;
-	}			
+	}
+
+#if (OPENSSL_VERSION_NUMBER < 0x10100000L)
 	common_name_str = (char *) ASN1_STRING_data(common_name_asn1);
+#else
+	common_name_str = (char *) ASN1_STRING_get0_data(common_name_asn1);
+#endif
+	//common_name_str = (char *) ASN1_STRING_data(common_name_asn1);
 
 	// Make sure there isn't an embedded NUL character in the CN
 	if (ASN1_STRING_length(common_name_asn1) != strlen(common_name_str)) {
@@ -80,11 +86,11 @@ static HostnameValidationResult matches_subject_alternative_name(const char *hos
 	HostnameValidationResult result = MatchNotFound;
 	int i;
 	int san_names_nb = -1;
-	STACK_OF(GENERAL_NAME) *san_names = NULL;
+	STACK_OF(GENERAL_NAME) *san_names = nullptr;
 
 	// Try to extract the names within the SAN extension from the certificate
-	san_names = X509_get_ext_d2i((X509 *) server_cert, NID_subject_alt_name, NULL, NULL);
-	if (san_names == NULL) {
+	san_names = (GENERAL_NAME*)X509_get_ext_d2i((X509 *) server_cert, NID_subject_alt_name, nullptr, nullptr);
+	if (san_names == nullptr) {
 		return NoSANPresent;
 	}
 	san_names_nb = sk_GENERAL_NAME_num(san_names);
@@ -95,7 +101,13 @@ static HostnameValidationResult matches_subject_alternative_name(const char *hos
 
 		if (current_name->type == GEN_DNS) {
 			// Current name is a DNS name, let's check it
-			char *dns_name = (char *) ASN1_STRING_data(current_name->d.dNSName);
+
+#if (OPENSSL_VERSION_NUMBER < 0x10100000L)
+	char *dns_name = (char *) ASN1_STRING_data(current_name->d.dNSName);
+#else
+	char *dns_name = (char *) ASN1_STRING_get0_data(current_name->d.dNSName);
+#endif
+
 
 			// Make sure there isn't an embedded NUL character in the DNS name
 			if (ASN1_STRING_length(current_name->d.dNSName) != strlen(dns_name)) {
@@ -130,7 +142,7 @@ static HostnameValidationResult matches_subject_alternative_name(const char *hos
 HostnameValidationResult validate_hostname(const char *hostname, const X509 *server_cert) {
 	HostnameValidationResult result;
 
-	if((hostname == NULL) || (server_cert == NULL))
+	if((hostname == nullptr) || (server_cert == nullptr))
 		return Error;
 
 	// First try the Subject Alternative Names extension

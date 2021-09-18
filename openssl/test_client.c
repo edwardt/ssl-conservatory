@@ -30,7 +30,7 @@
 
 
 
-#define TARGET_SERVER TARGET_HOST":"TARGET_PORT
+#define TARGET_SERVER TARGET_HOST ":" TARGET_PORT
 // 'High' cipher suites minus Anonymous DH and Camellia
 #define SECURE_CIPHER_LIST "RC4-SHA:HIGH:!ADH:!AECDH:!CAMELLIA"
 
@@ -65,8 +65,12 @@ int main(int argc, char *argv[]) {
 		fprintf(stderr, "OpenSSL PRNG not seeded with enough data.");
 		goto error_1;
 	}
-
-	ssl_ctx = SSL_CTX_new(TLSv1_client_method());
+#if (OPENSSL_VERSION_NUMBER < 0x10100000L)
+	ssl_ctx = SSL_CTX_new(TLSv1_2_client_method());
+#else
+	ssl_ctx = SSL_CTX_new(TLS_client_method());
+#endif
+	//ssl_ctx = SSL_CTX_new(TLSv1_client_method());
 	
 	// Enable certificate validation
 	SSL_CTX_set_verify(ssl_ctx, SSL_VERIFY_PEER, NULL);
